@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="stylesheet" href="tagging.css" />
+    </head>
+    
+    <body>
+        <h1>PATATA v1.0</h1>
+        <details id="settings-details">
+            <summary>Settings</summary>
+            <div id="settings-details">
+                <p></p>
+                <input type="text" id="useragent" placeholder="Enter your main nation" />
+                <p></p>
+                <label for="password">Enter your password below</label>
+                <input type="password" id="password" name="password" />
+                <p></p>
+                <label for="nation-list">Enter your list of switchers separated by a new line for each.</label>
+                <textarea id="nation-list" name="nation-list" rows="10" placeholder="Nation 1&#10;Nation 2&#10;Nation 3..." wrap="off"></textarea>
+                <p></p>
+                <button id="save-settings-btn" type="button">Save</button>
+            </div>
+        </details>
+        <details id="tagging-details">
+            <Summary>Tagging</Summary>
+            <div id="tagging-content">
+                <!--<input type="text" id="wfe" placeholder="Enter WFE" />-->
+                <p></p>
+                <label for="wfe-input">Enter WFE</label>
+                <textarea id="wfe-input" name="wfe-input" rows="5"></textarea>
+                <p></p>
+                <label for="flag-input">Select a flag</label>
+                <input type="file" id="flag-input" accept=".png,.gif,.svg,.jpg,.jpeg" />
+                <p></p>
+                <label for="banner-input">Select a banner</label>
+                <input type="file" id="banner-input" accept=".png,.svg,.jpg,.jpeg" />
+                <p></p>
+                <!--<details>
+                    <summary>Tag Selection</summary>
+                    <div>
+                        <input type="checkbox" id="invaderTag"
+                    </div>
+                </details>-->
+                <label for="embassy-input">Enter the list of embassies separated by a new line for each.</label>
+                <textarea id="embassy-input" name="embassy-input" rows="5" placeholder="The Black Hawks" wrap="off"></textarea>
+                <p></p>
+                <fieldset>
+                    <legend>Select tags to apply</legend>
+                    <div>
+                        <input type="checkbox" id="invader-tag-input" />
+                        <label for="invader-tag-input">Invader</label>
+                    </div>
+                    <p>Look I'll add more eventually</p>
+                </fieldset>
+                <button id="tag-start-btn" type="button" hidden>Start</button>
+            </div>
+        </details>
+        <p id="ping-text" hidden>Checking nations for RO perms, please wait.</p>
+        <div id="tagging-div">
+            <h2 id="tagging-label" hidden></h2>
+            <h3 id="tagging-txt" hidden></h3>
+            <button id="tag-btn" type="button" hidden>Begin Tagging</button>
+            <label for='tag-links-list'>Copy the region links.</label>
+            <textarea id="tag-links-list" name="tag-links-list" readonly hidden></textarea>
+        </div>
+        <script type="module" src="app.js"></script>
+    </body>
+</html>

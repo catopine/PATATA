@@ -1,0 +1,16 @@
+html,
+body {
+    width: 200px;
+}
+
+textarea {
+    resize: none;
+    width: 96%;
+}
+
+button {
+    align-self: center;
+    align-items: center;
+    align-content: center;
+    vertical-align: bottom;
+}

@@ -1,0 +1,45 @@
+{
+    "manifest_version": 3,
+    "name": "PATATA",
+    "version": "1.0.0",
+
+    "description": "Tag regions easily (hopefully).",
+
+    "icons": 
+    {
+        "30": "temp-30.png"
+    },
+
+    "permissions": ["storage", "activeTab", "scripting", "cookies", "tabs"],
+
+    "host_permissions": [
+        "*://*.nationstates.net/*"
+    ],
+
+    "browser_specific_settings": 
+    {
+        "gecko": 
+        {
+            "id": "PATATA@catopine.org",
+            "data_collection_permissions": 
+            {
+                "required": ["none"]
+            }
+        }
+    },
+
+    "sidebar_action": 
+    {
+        "default_icon": "temp-30.png",
+        "default_title": "PATATA",
+        "default_panel": "tagging.html"
+    },
+
+    "content_scripts": 
+    [
+        {
+            "matches": ["*://*/*"]
+        }
+    ]
+
+}

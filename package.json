@@ -1,0 +1,18 @@
+{
+  "name": "patata",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc && xcopy public dist /E /I /Y"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/firefox-webext-browser": "^143.0.0",
+    "typescript": "^7.0.2"
+  }
+}
