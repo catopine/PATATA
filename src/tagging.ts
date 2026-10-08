@@ -15,66 +15,105 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { desanitize, getTabs, ValidationStuff, NationRegionPair, Emb } from './ui'
-import { userSettings } from './settings'
-import { tagSettings } from './checking'
+import * as ui from './ui.js'
+import { userSettings } from './settings.js'
+import { tagSettings } from './checking.js'
 
 // Gonna make this a class. Seems like a decent way to do it.
 // Really have no idea lol. This is getting confusing
 // Gonna try my best to copy Henson. Thank you Nota
 
-export class TagFetch
+/**
+ * This class interacts with the NS HTML site, and handles its responses
+ */
+export class NsHtml
 {
-    private static myHeaders: Headers
+    private static myHeaders: Headers = new Headers({})
     private static userClickTime: string
     private static httpUrl: string = 'https://www.nationstates.net'
 
-    async login (nationRegionPair: NationRegionPair): Promise<ValidationStuff | null>
+    /**
+     * Logs into a nation capable of tagging its region
+     * @param nationRegionPair A taggable region and its corresponding nation
+     * @returns The info required to validate future requests, or null on failure
+     */
+    async login (nationRegionPair: ui.NationRegionPair): Promise<ui.ValidationStuff | null>
     {
         // Why does Henson use a region
-        const nation: string = nationRegionPair.nation as string
-        const password: string = userSettings.pass as string
+        const nation: string = nationRegionPair.nation!
+        const password: string = userSettings.pass
+        
+        const data: FormData = new FormData()
+        data.set('nation', nation)
+        data.set('password', password)
+        data.set('logging_in', '1')
+
+        /*const body: string = JSON.stringify(
+            {
+                nation: nation,
+                password: password,
+                logging_in: '1',
+                userclick: TagFetch.userClickTime
+            }
+        )*/
         // This link is what Nota had (I think). Don't really know what it'll do
-        const loginRequest = new Request (`${TagFetch.httpUrl}/region=porcs_region`,
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/region=porcupine?userclick=${NsHtml.userClickTime}`,
         {
             method: 'POST',
-            // So idk what the point of JSON.stringify is, but almost all examples I can find do it
-            // Also don't know what logging_in does
-            body: JSON.stringify({ nation: nation, password: password, logging_in: '1', userclick: TagFetch.userClickTime }),
-            headers: TagFetch.myHeaders
+            body: data,
+            headers: NsHtml.myHeaders
         })
         try
         {
-            //const fetchResponse: string = await TagFetch.fetchRequest(loginRequest)
-            const fetchResponse: Response = await fetch(loginRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                // I don't think it will ever be null tbh
+                // Future Porc here. Actually it will be now if the header isn't set properly
+                // I know what I'm doing. Trust
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            //const fetchResponse: string = await TagFetch.fetchRequest(loginRequest)
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
             //const fetchResponse2 = fetchResponse.clone()
-            const fetchResponseString: string = await fetchResponse.text()
+            const htmlResponseString: string = await htmlResponse.text()
 
             const htmlParser: DOMParser = new DOMParser()
-            const parsedResponse: Document = htmlParser.parseFromString(fetchResponseString, 'text/html')
-            const parseError: Element | null = parsedResponse.querySelector('parsererror')
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
             if (parseError !== null)
             {
                 throw new Error('HTML parsing error')
             }
 
-            // So like I have no idea what these are for
-            // But Henson got them, so ig we need them
-            const chk: string | undefined = (parsedResponse.getElementsByName('chk')[0] as HTMLInputElement)?.value
+            const chk: string | undefined | null = (parsedResponse.getElementsByName('chk')[0] as HTMLInputElement).value
             // Don't think I even need localid, I don't think it's used for tagging
             const localId: string = (parsedResponse.getElementsByName('localid')[0] as HTMLInputElement).value
-            const activeTab: browser.tabs.Tab = (await getTabs())[0]!
-            const pinCookie = await browser.cookies.get({
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
+            const pinCookie: browser.cookies.Cookie | null = await browser.cookies.get({
                 url: activeTab.url!,
                 name: 'pin'
             })
+            if (pinCookie === null)
+            {
+                // Don't think this will ever run, the error should be thrown when getting the cookie
+                throw new Error ('Getting the PIN failed')
+            }
+            else if (chk === undefined || chk === null)
+            {
+                throw new Error ('Getting the Chk failed')
+            }
             const pin: string = pinCookie!.value
 
-            const validation: ValidationStuff = 
+            const validation: ui.ValidationStuff = 
             {
                 chk: chk,
                 localid: localId,
@@ -90,41 +129,83 @@ export class TagFetch
         }
     }
 
+    /**
+     * Sets the WFE of a region
+     * @param region The region
+     * @param check The chk to validate the login
+     * @param pin The PIN to validate the login
+     * @param wfe The WFE
+     * @returns A boolean that says if setting the WFE succeeded
+     */
     async setWfe (region: string, check: string, pin: string, wfe: string): Promise<boolean>
     {
-        const activeTab: browser.tabs.Tab = (await getTabs())[0]!
-        // My understanding is that this doesn't send any requests to the server
-        // But I don't have a clue what cookies really are, so ̄¯\_(ツ)_/¯
-        const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set({
-            url: activeTab.url!,
-            name: 'pin',
-            value: pin
-        })
-        if (pinCookie === null)
+        try {
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
+            // My understanding is that this doesn't send any requests to the server
+            // But I don't have a clue what cookies really are, so ̄¯\_(ツ)_/¯
+            const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set({
+                url: activeTab.url!,
+                name: 'pin',
+                value: pin
+            })
+            if (pinCookie === null)
+            {
+                throw new Error(`Setting the pin failed.`)
+            }
+        }
+        catch (error)
         {
-            throw new Error (`Setting the pin failed.`)
+            console.error(error)
+            return false
         }
 
-        // PORC make emojis work in the wfe cause like unicode escaping or some shit
-        const fetchRequest = new Request (`${TagFetch.httpUrl}/template-overall=none/page=region_control`,
+        // I think this will work properly?
+        const encodedWFE: string = wfe.replace(/[^\x00-\x7F]/ugm, s => `&#${s.codePointAt(0)};`)
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', region)
+        data.set('setwfebutton', '1')
+        data.set('message', encodedWFE)
+        /*const body: string = JSON.stringify(
+            {
+                page: 'region_control',
+                chk: check,
+                region: region,
+                setwfebutton: '1',
+                userclick: TagFetch.userClickTime,
+                message: wfe
+            }
+        )*/
+
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: JSON.stringify({ page: 'region_control', chk: check, region: region, setwfebutton: '1', userclick: TagFetch.userClickTime, message: wfe }),
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            const fetchResponseString = await fetchResponse.text()
+            const htmlResponseString = await htmlResponse.text()
             // No idea if it would return null or undefined, so I'll just have both in case
-            const successful: boolean = fetchResponseString !== null && fetchResponseString !== undefined && fetchResponseString.includes('World Factbook Entry updated!')
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('World Factbook Entry updated!')
             
             return successful
         }
@@ -135,23 +216,28 @@ export class TagFetch
         }
     }
 
+    // Tf is the CGI?
+    /**
+     * This uploads a banner to the NS CGI to be later set on the region
+     * @param region The region to upload it to
+     * @param check The chk to verify the request
+     * @param pin The PIN to verify the request
+     * @param file The file of the banner to upload
+     * @returns The id of the banner to be later set, or null on failure
+     */
     async uploadBanner (region: string, check: string, pin: string, file: File): Promise<string | null>
     {
-        // I have no idea how to do this
-        // Do I need formData? Maybe.
-        const formData = new FormData()
-        // Also don't have any idea if any of these are valid json body stuff
-        formData.append('file_upload_rbanner', tagSettings.banner!)
-        formData.append('page', 'region_control')
-        formData.append('uploadtype', 'rbanner')
-        formData.append('expect', 'json')
-        formData.append('chk', check)
-        formData.append('region', region),
-        formData.append('userclick', TagFetch.userClickTime)
+        const data: FormData = new FormData()
+        data.set('file_upload_rbanner', tagSettings.banner!)
+        data.set('page', 'region_control')
+        data.set('uploadtype', 'rbanner')
+        data.set('expect', 'json')
+        data.set('chk', check)
+        data.set('region', region)
 
         try
         {
-            const activeTab: browser.tabs.Tab = (await getTabs())[0]!
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
             const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set({
                 url: activeTab.url!,
                 name: 'pin',
@@ -168,34 +254,43 @@ export class TagFetch
             return null
         }
 
-        const fetchRequest = new Request (`${TagFetch.httpUrl}/cgi-bin/upload.cgi`,
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/cgi-bin/upload.cgi?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: JSON.stringify(Object.fromEntries(formData)),
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            // Ok so I don't have the slightest idea how to get the banner id
-            // Like maybe the response returns JSON?
-            const fetchResponseThing: object = await fetchResponse.json()
-            if (fetchResponseThing && typeof fetchResponseThing === 'object' && 'id' in fetchResponseThing)
+            // Ftr, this doesn't return Json, it parses the Json to get a JS object
+            // This may be obvious to you dear reader, but it took me ages to figure out
+            const htmlResponseJson = await htmlResponse.json()
+            if (htmlResponseJson && typeof htmlResponseJson === 'object' && 'id' in htmlResponseJson)
             {
                 // This prob breaks everything
-                const bannerId: string = fetchResponseThing.id!.toString()
+                const bannerId: string = htmlResponseJson.id.toString()
                 return bannerId
             }
             else
             {
-                throw new Error (`Porc doesn't have a clue what she's doing, tell her to fix the fetchResponseThing of uploadBanner in tagging.ts`)
+                throw new Error (`Porc doesn't have a clue what she's doing, tell her to fix the htmlResponseJson of uploadBanner in tagging.ts`)
             }
         }
         catch (error)
@@ -205,23 +300,27 @@ export class TagFetch
         }
     }
 
+    /**
+     * This uploads a flag to the NS CGI to be later set
+     * @param region The region to upload it to
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param file The file of the flag to upload
+     * @returns A string of the flag id, or null on failure
+     */
     async uploadFlag (region: string, check: string, pin: string, file: File): Promise<string | null>
     {
-        // I have no idea how to do this
-        // Do I need formData? Maybe.
-        const formData = new FormData()
-        // Also don't have any idea if any of these are valid json body stuff
-        formData.append('file_upload_rflag', tagSettings.flag!)
-        formData.append('page', 'region_control')
-        formData.append('uploadtype', 'rflag')
-        formData.append('expect', 'json')
-        formData.append('chk', check)
-        formData.append('region', region),
-        formData.append('userclick', TagFetch.userClickTime)
+        const data: FormData = new FormData()
+        data.set('file_upload_rflag', tagSettings.flag!)
+        data.set('page', 'region_control')
+        data.set('uploadtype', 'rflag')
+        data.set('expect', 'json')
+        data.set('chk', check)
+        data.set('region', region)
 
         try
         {
-            const activeTab: browser.tabs.Tab = (await getTabs())[0]!
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
             const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set({
                 url: activeTab.url!,
                 name: 'pin',
@@ -238,33 +337,43 @@ export class TagFetch
             return null
         }
 
-        const fetchRequest = new Request (`${TagFetch.httpUrl}/cgi-bin/upload.cgi`,
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/cgi-bin/upload.cgi?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: JSON.stringify(Object.fromEntries(formData)),
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
             // Literally all of this is just copied from the banner
-            const fetchResponseThing: object = await fetchResponse.json()
-            if (fetchResponseThing && typeof fetchResponseThing === 'object' && 'id' in fetchResponseThing)
+            // Again, htmlResponseJson isn't JSON, it's an object. Probably. It's smth that's for sure. Def not JSON tho
+            const htmlResponseJson = await htmlResponse.json()
+            if (htmlResponseJson && typeof htmlResponseJson === 'object' && 'id' in htmlResponseJson)
             {
                 // This prob breaks everything
-                const flagId: string = fetchResponseThing.id!.toString()
+                const flagId: string = htmlResponseJson.id.toString()
                 return flagId
             }
             else
             {
-                throw new Error (`Porc doesn't have a clue what she's doing, tell her to fix the fetchResponseThing of uploadFlag in tagging.ts`)
+                throw new Error (`Porc doesn't have a clue what she's doing, tell her to fix the htmlResponseJson of uploadFlag in tagging.ts`)
             }
         }
         catch (error)
@@ -274,21 +383,46 @@ export class TagFetch
         }
     }
 
+    /**
+     * This sets the banner and flag of a region to be the ones previously uploaded to the CGI
+     * @param region The region to set the flag and banner on
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param bannerId The id of the banner
+     * @param flagId The id of the flag
+     * @returns A boolean saying if this succeeded or not
+     */
     async setBannerFlag (region: string, check: string, pin: string, bannerId: string, flagId: string): Promise<boolean>
     {
-        const activeTab: browser.tabs.Tab = (await getTabs())[0]!
-        const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set({
-            url: activeTab.url!,
-            name: 'pin',
-            value: pin
-        })
-        // Does this need to be in a try/catch?
-        if (pinCookie === null)
+        try
         {
-            throw new Error (`Setting the pin failed.`)
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
+            const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set({
+                url: activeTab.url!,
+                name: 'pin',
+                value: pin
+            })
+            if (pinCookie === null)
+            {
+                throw new Error(`Setting the pin failed.`)
+            }
+        }
+        catch (error)
+        {
+            console.error(error)
+            return false
         }
 
-        const body: string = JSON.stringify(
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', region)
+        data.set('newbanner', bannerId)
+        data.set('newflag', flagId)
+        data.set('saveflagandbannerchanges', '1')
+        data.set('flagmode', 'flag')
+        data.set('newflagmode', 'flag')
+        /*const body: string = JSON.stringify(
             {
                 page: 'region_control',
                 chk: check,
@@ -300,25 +434,35 @@ export class TagFetch
                 newflagmode: 'flag',
                 userclick: TagFetch.userClickTime
             }
-        )
-        const fetchRequest = new Request (`${TagFetch.httpUrl}/template-overall=none/page=region_control`,
+        )*/
+
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: body,
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            const fetchResponseString: string = await fetchResponse.text()
-            const successful: boolean = fetchResponseString !== null && fetchResponseString !== undefined && fetchResponseString.includes('banner/flag updated!')
+            const htmlResponseString: string = await htmlResponse.text()
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('banner/flag updated!')
             
             return successful
         }
@@ -329,12 +473,20 @@ export class TagFetch
         }
     }
 
-    async closeEmbassy (region: string, check: string, pin: string, regionToClose: Emb): Promise<boolean>
+    /**
+     * This closes a specified embassy of the region being tagged
+     * @param region The region being tagged
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param regionToClose The region whose embassy is being closed, and the corresponding embCode
+     * @returns A boolean saying if this succeeded
+     */
+    async closeEmbassy (region: string, check: string, pin: string, regionToClose: ui.Emb): Promise<boolean>
     {
-        const activeTab: browser.tabs.Tab = (await getTabs())[0]!
         try
         {
             // This should just be a function tbh
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
             const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set(
                 {
                     url: activeTab.url!,
@@ -342,7 +494,8 @@ export class TagFetch
                     value: pin
                 }
             )
-            if (pinCookie === null) {
+            if (pinCookie === null)
+            {
                 throw new Error(`Setting the pin failed.`)
             }
         }
@@ -352,6 +505,10 @@ export class TagFetch
             return false
         }
 
+        /**
+         * Figures out how an embassy should be closed based upon the type it is
+         * @returns The key to be set in the data of the request sent to the HTML to close the embassy
+         */
         const stopType = (() =>
         {
             switch (regionToClose.embCode)
@@ -378,46 +535,58 @@ export class TagFetch
                     }
                 default:
                     {
+                        // Wouldn't this just cause it to incorrectly stop the closure of embassies that are not desired
+                        // Ig maybe Nota did smth previously that filtered out any being closed that weren't desired
                         return 'cancelembassyclosureregion'
                     }
             }
         })
         
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', region)
         // Let's see if this shit works
-        const body: string = `${JSON.stringify(
+        data.set(stopType(), regionToClose.name)
+        /*const body: string = JSON.stringify(
             {
                 page: 'region_control',
                 chk: check,
                 region: region,
-                userclick: TagFetch.userClickTime
+                userclick: TagFetch.userClickTime,
+                [stopType()]: regionToClose.name
             }
-        )},\u{000A}${stopType()}: ${regionToClose.name}`
-        const fetchRequest: Request = new Request (`${TagFetch.httpUrl}/template-overall=none/page=region_control`,
+        )*/
+
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: body,
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
+            if (htmlRequest.headers.get('User-Agent') === null)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
             // Ya know I originally planned to have a single function to make requests like in the api,
             // but the response for all of them is different enough it would be pointless
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            const fetchResponseString: string = await fetchResponse.text()
-            const successful: boolean = fetchResponseString !== null &&
-                                        fetchResponseString !== undefined &&
-                                        (fetchResponseString.includes(' rejected.') ||
-                                        fetchResponseString.includes(' demolition.') ||
-                                        fetchResponseString.includes(' withdrawn.') ||
-                                        fetchResponseString.includes(' aborted.') ||
-                                        fetchResponseString.includes(' cancelled.'))
+            const htmlResponseString: string = await htmlResponse.text()
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && (htmlResponseString.includes(' rejected.') || htmlResponseString.includes(' demolition.') || htmlResponseString.includes(' withdrawn.') || htmlResponseString.includes(' aborted.') || htmlResponseString.includes(' cancelled.'))
             if (!successful)
             {
                 throw new Error (`Rejecting embassy of ${regionToClose.name} from ${region} failed.`)
@@ -432,12 +601,19 @@ export class TagFetch
         }
     }
 
+    /**
+     * Requests an embassy with a specified region
+     * @param targRegion The region being tagged
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param regionToRequest The region that the embassy is being requested with
+     * @returns A boolean saying if this succeeded
+     */
     async requestEmbassy (targRegion: string, check: string, pin: string, regionToRequest: string): Promise<boolean>
     {
-        const activeTab: browser.tabs.Tab = (await getTabs())[0]!
         try
         {
-            // This should just be a function tbh
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
             const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set(
                 {
                     url: activeTab.url!,
@@ -445,7 +621,9 @@ export class TagFetch
                     value: pin
                 }
             )
-            if (pinCookie === null) {
+            // Ya know, this will never return null, it'll just throw an error
+            if (pinCookie === null)
+            {
                 throw new Error(`Setting the pin failed.`)
             }
         }
@@ -455,7 +633,13 @@ export class TagFetch
             return false
         }
 
-        const body: string = JSON.stringify(
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', targRegion)
+        data.set('requestembassyregion', regionToRequest)
+        data.set('requestembassy', '1')
+        /*const body: string = JSON.stringify(
             {
                 page: 'region_control',
                 chk: check,
@@ -464,25 +648,35 @@ export class TagFetch
                 requestembassy: '1',
                 userclick: TagFetch.userClickTime
             }
-        )
-        const fetchRequest: Request = new Request (`${TagFetch.httpUrl}/template-overall=none/page=region_control`,
+        )*/
+
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: body,
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            const fetchResponseString: string = await fetchResponse.text()
-            const successful: boolean = fetchResponseString !== null && fetchResponseString !== undefined && fetchResponseString.includes(' has been sent.')
+            const htmlResponseString: string = await htmlResponse.text()
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' has been sent.')
 
             return successful
         }
@@ -493,11 +687,19 @@ export class TagFetch
         }
     }
 
+    /**
+     * Removes a specified tag from the region being tagged
+     * @param region The region being tagged
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param tag The tag being removed
+     * @returns A boolean saying if this succeeded
+     */
     async removeTag (region: string, check: string, pin: string, tag: string): Promise<boolean>
     {
-        const activeTab: browser.tabs.Tab = (await getTabs())[0]!
         try
         {
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
             const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set(
                 {
                     url: activeTab.url!,
@@ -505,7 +707,8 @@ export class TagFetch
                     value: pin
                 }
             )
-            if (pinCookie === null) {
+            if (pinCookie === null)
+            {
                 throw new Error(`Setting the pin failed.`)
             }
         }
@@ -515,7 +718,13 @@ export class TagFetch
             return false
         }
 
-        const body: string = JSON.stringify(
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', region)
+        data.set('remove_tag', tag)
+        data.set('updatetagsbutton', '1')
+        /*const body: string = JSON.stringify(
             {
                 page: 'region_control',
                 chk: check,
@@ -524,26 +733,35 @@ export class TagFetch
                 updatetagsbutton: '1',
                 userclick: TagFetch.userClickTime
             }
-        )
+        )*/
 
-        const fetchRequest: Request = new Request (`${TagFetch.httpUrl}/template-overall=none/page=region_control`,
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: body,
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            const fetchResponseString: string = await fetchResponse.text()
-            const successful: boolean = fetchResponseString !== null && fetchResponseString !== undefined && fetchResponseString.includes(' updated!')
+            const htmlResponseString: string = await htmlResponse.text()
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' updated!')
 
             return successful
         }
@@ -554,11 +772,19 @@ export class TagFetch
         }
     }
 
+    /**
+     * This adds a specified tag to the region being tagged
+     * @param region The region being tagged
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param tag The tag to be added
+     * @returns A boolean saying if this succeeded
+     */
     async addTag (region: string, check: string, pin: string, tag: string): Promise<boolean>
     {
-        const activeTab: browser.tabs.Tab = (await getTabs())[0]!
         try
         {
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
             const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set(
                 {
                     url: activeTab.url!,
@@ -566,7 +792,8 @@ export class TagFetch
                     value: pin
                 }
             )
-            if (pinCookie === null) {
+            if (pinCookie === null)
+            {
                 throw new Error(`Setting the pin failed.`)
             }
         }
@@ -576,7 +803,13 @@ export class TagFetch
             return false
         }
 
-        const body: string = JSON.stringify(
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', region)
+        data.set('add_tag', tag)
+        data.set('updatetagsbutton', '1')
+        /*const body: string = JSON.stringify(
             {
                 page: 'region_control',
                 chk: check,
@@ -585,26 +818,35 @@ export class TagFetch
                 updatetagsbutton: '1',
                 userclick: TagFetch.userClickTime
             }
-        )
+        )*/
 
-        const fetchRequest: Request = new Request (`${TagFetch.httpUrl}/template-overall=none/page=region_control`,
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: body,
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            const fetchResponseString: string = await fetchResponse.text()
-            const successful: boolean = fetchResponseString !== null && fetchResponseString !== undefined && fetchResponseString.includes(' updated!')
+            const htmlResponseString: string = await htmlResponse.text()
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' updated!')
 
             return successful
         }
@@ -615,11 +857,19 @@ export class TagFetch
         }
     }
 
+    /**
+     * This removes a specified dispatch from the region being tagged
+     * @param region The region being tagged
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param dispatchId The id of the dispatch to be sent to the HTML
+     * @returns A promise saying if this succeeded
+     */
     async removeDispatch (region: string, check: string, pin: string, dispatchId: string): Promise<boolean>
     {
-        const activeTab: browser.tabs.Tab = (await getTabs())[0]!
         try
         {
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
             const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set(
                 {
                     url: activeTab.url!,
@@ -627,7 +877,8 @@ export class TagFetch
                     value: pin
                 }
             )
-            if (pinCookie === null) {
+            if (pinCookie === null)
+            {
                 throw new Error(`Setting the pin failed.`)
             }
         }
@@ -637,7 +888,13 @@ export class TagFetch
             return false
         }
 
-        const body: string = JSON.stringify(
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', region)
+        data.set('remove_dispatch', dispatchId)
+        data.set('confirm_dispatch', dispatchId)
+        /*const body: string = JSON.stringify(
             {
                 page: 'region_control',
                 chk: check,
@@ -646,26 +903,35 @@ export class TagFetch
                 confirm_dispatch: dispatchId,
                 userclick: TagFetch.userClickTime
             }
-        )
+        )*/
 
-        const fetchRequest: Request = new Request (`${TagFetch.httpUrl}/template-overall=none/page=region_control`,
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
             {
                 method: 'POST',
-                body: body,
-                headers: TagFetch.myHeaders
+                body: data,
+                headers: NsHtml.myHeaders
             }
         )
 
         try
         {
-            const fetchResponse: Response = await fetch(fetchRequest)
-            if (!fetchResponse.ok)
+            if (htmlRequest.headers.get('User-Agent') === null)
             {
-                throw new Error(`Response status: ${fetchResponse.status}`)
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+            
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
             }
 
-            const fetchResponseString: string = await fetchResponse.text()
-            const successful: boolean = fetchResponseString !== null && fetchResponseString !== undefined && fetchResponseString.includes(' removed.')
+            const htmlResponseString: string = await htmlResponse.text()
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' removed.')
 
             return successful
         }
@@ -677,33 +943,103 @@ export class TagFetch
     }
 
     /**
-     * This makes a request to the NS HTML site
-     * @param url The url being used in the request
+     * This removes the active poll from the region being tagged and indicates if a queued poll became active
+     * @param region The region being tagged
+     * @param check The chk for verification
+     * @param pin The PIN for verification
+     * @param pollId The id of the poll to be removed
+     * @returns A boolean indicating success
+     * @returns A string of the queued poll that is now active, or null if there is none
      */
-    private static async fetchRequest (request: Request): Promise<string>
+    async removePoll (region: string, check: string, pin: string, pollId: string): Promise<[boolean, string | null]>
     {
         try
         {
-            if (TagFetch.myHeaders.get('User-Agent') === undefined)
+            const activeTab: browser.tabs.Tab = (await ui.getTabs())[0]!
+            const pinCookie: browser.cookies.Cookie | null = await browser.cookies.set(
+                {
+                    url: activeTab.url!,
+                    name: 'pin',
+                    value: pin
+                }
+            )
+            if (pinCookie === null)
             {
-                throw new Error ('Set a main nation before using this extension')
+                throw new Error(`Setting the pin failed.`)
             }
-            const fetchResponse = await fetch(request)
-            if (!fetchResponse.ok)
-            {
-                throw new Error(`Response status: ${fetchResponse.status}`)
-            }
-            return await fetchResponse.text()
         }
         catch (error)
         {
             console.error(error)
-            throw new Error
+            return [false, null]
+        }
+
+        const data: FormData = new FormData()
+        data.set('page', 'region_control')
+        data.set('chk', check)
+        data.set('region', region)
+        data.set('deletepollbutton', pollId)
+        // I don't think there's any kind of confirmation needed for a poll
+
+        const htmlRequest: Request = new Request (`${NsHtml.httpUrl}/template-overall=none/page=region_control?userclick=${NsHtml.userClickTime}`,
+            {
+                method: 'POST',
+                body: data,
+                headers: NsHtml.myHeaders
+            }
+        )
+
+        try
+        {
+            if (htmlRequest.headers.get('User-Agent') === null)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }
+            /*else if (htmlRequest.headers.get('User-Agent') !== `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize((await browser.storage.local.get('ua')).value)})`)
+            {
+                throw new Error(`Please set a User Agent before using this script`)
+            }*/
+            
+            const htmlResponse: Response = await fetch(htmlRequest)
+            if (!htmlResponse.ok)
+            {
+                throw new Error(`Response status: ${htmlResponse.status}`)
+            }
+
+            const htmlResponseString: string = await htmlResponse.text()
+            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('Poll removed.')
+
+            // Need to check if there is now a queued poll
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            const newPollCheck: NodeListOf<HTMLInputElement> = parsedResponse.getElementsByName('deletepollbutton') as NodeListOf<HTMLInputElement>
+            // If there is nothing in the list, there is no other poll to delete
+            if (newPollCheck.length === 0)
+            {
+                return [successful, null]
+            }
+            else
+            {
+                const newPollId: string = newPollCheck[0]!.value
+                return [successful, newPollId]
+            }
+        }
+        catch (error)
+        {
+            console.error(error)
+            return [false, null]
         }
     }
 
     /**
-     * This sets the useragent for the API
+     * This sets the useragent for the HTML
+     * @param nation The useragent nation
      */
     setUA (nation: string): void
     {
@@ -713,17 +1049,15 @@ export class TagFetch
         {
             throw new Error('User nation not properly set')
         }
-        TagFetch.myHeaders.set('User-Agent', `PATATA/1.0.0 (by:Tyrannical Porcupines United\u{003B} usedBy:${desanitize(sanitizedNation)})`)
-    }
-    
-    setPin (pin: string)
-    {
-        TagFetch.myHeaders.set
+        NsHtml.myHeaders.set('User-Agent', `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize(sanitizedNation)})`)
     }
 
+    /**
+     * This sets the time of the userclick
+     */
     setUserClick (): void
     {
         const unixTime: number = Date.now()
-        TagFetch.userClickTime = unixTime.toString()
+        NsHtml.userClickTime = unixTime.toString()
     }
 }

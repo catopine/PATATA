@@ -17,17 +17,28 @@
 
 // Just decided to bite the bullet and make a single file for all the utility functions
 // Was getting too complicated trying to figure out where each function had to be imported from
+// Probably shouldn't have named it ui. Very little of this is actually ui stuff
+
+// Only reason PATATA_VERSION has a JSDoc Comment is to keep it from having the copyright one above
+/**
+ * Version number of PATATA
+ */
+export const PATATA_VERSION: string = `1.1.1`
 
 /**
  * The stuff that is needed to verify that the user is who they say they are.
  * I think.
  */
-export interface ValidationStuff {
+export interface ValidationStuff
+{
     chk: string | undefined,
     localid: string,
     pin: string
 }
 
+/**
+ * A pair of a nation, its region, and the authorities it has in that region
+ */
 export interface NationRegionPair
 {
     nation: string | undefined,
@@ -35,20 +46,31 @@ export interface NationRegionPair
     authorities: string | undefined
 }
 
+/**
+ * The info of a region that needs to be removed when tagging
+ */
 export interface RegionInfo
 {
     dispatches: string[],
     embs: Emb[],
-    tags: string[]
+    tags: string[],
+    poll: string | null
 }
 
+/**
+ * An embassy and its corresponding code
+ */
 export interface Emb
 {
     name: string,
     embCode: number
 }
 
-export const unremovableTags = [
+/**
+ * The tags that are not able to be removed by an RO with appearence auth
+ */
+export const unremovableTags: string[] = 
+[
     'Commended', 'Condemned', 'Liberated', 'Injuncted', 'Minuscule', 'Small', 'Medium', 'Large', 'Enormous', 'Gargantuan', 'Featured', 'Founderless', 'Governorless', 'New', 'Frontier'
 ]
 
@@ -66,7 +88,16 @@ export interface TagSettings
     flag: File | null,
     banner: File | null,
     embassies: string[],
-    tags: string[]
+    tags: string[],
+    auth: Auth
+}
+
+export interface Auth
+{
+    appearance: boolean,
+    communications: boolean,
+    embassies: boolean,
+    polls: boolean
 }
 
 // Literally the only point of this one is to clean up the global declaration space of app.ts
@@ -84,13 +115,108 @@ export interface CurrentStuff
     embassiesToClose: Emb[],
     alrEstablishedEmbassies: string[],
     tagInfo: Tags,
-    dispatchesToRemove: string[], // change
+    dispatchesToRemove: string[], // change. why tho this works fine
+    pollToRemove: string | null,
     index: number
 }
 
+/**
+ * This changes the text on the tag button depending on what is being tagged and what was just tagged
+ * @param tagBtn The button that is used for tagging
+ */
+export async function getNextBtnText(tagBtn: HTMLButtonElement): Promise<void>
+{
+    try
+    {
+        const tagWhat = await browser.storage.session.get(null)
+        switch (tagBtn.textContent)
+        {
+            case 'Get Region Info':
+                {
+                    if (tagWhat.wfe)
+                    {
+                        tagBtn.textContent = 'Set WFE'
+                        break
+                    }
+                }
+            case 'Set WFE':
+                {
+                    if (tagWhat.flagAndBanner)
+                    {
+                        tagBtn.textContent = 'Upload Banner'
+                        break
+                    }
+                }
+            case 'Set Banner + Flag':
+                {
+                    if (tagWhat.embs)
+                    {
+                        tagBtn.textContent = 'Close Embassy'
+                        break
+                    }
+                }
+            case 'Request Embassy':
+                {
+                    if (tagWhat.tags)
+                    {
+                        tagBtn.textContent = 'Remove Tag'
+                        break
+                    }
+                }
+            case 'Remove Tag':
+                {
+                    if (tagWhat.tags)
+                    {
+                        tagBtn.textContent = 'Add Tag'
+                        break
+                    }
+                }
+            case 'Add Tag':
+                {
+                    if (tagWhat.dispatches)
+                    {
+                        tagBtn.textContent = 'Remove Dispatch'
+                        break
+                    }
+                }
+            case 'Remove Dispatch':
+                {
+                    if (tagWhat.poll)
+                    {
+                        tagBtn.textContent = 'Delete Poll'
+                        break
+                    }
+                }
+        }
+    }
+    catch (error)
+    {
+        console.error(error)
+    }
+}
+
+/**
+ * Sanitizes a given tag to a format that can be sent to the NS servers
+ * @param tag The tag to be sanitized
+ * @returns The sanitized tag
+ */
+export function sanitizeTag (tag: string): string
+{
+    // Tbh I could probably just change the regular sanitize function
+    // But I don't want to possibly mess smth up
+    return tag.trim().replace(/ /g, '_').replace(/:/g, '').toLowerCase()
+}
+
+/**
+ * Adds a successful tag to a string of successful tags
+ * @param region The region of the success
+ * @param successString The string of successful tags
+ * @returns The successString with the region concatenated
+ */
 export function addSuccessfulTag (region: string, successString: string): string
 {
-    return successString.concat(`https://www.nationstates.net/region=`, region)
+    return successString.concat(`https://www.nationstates.net/region=${region}\n`)
+    //return successString.concat(`https://www.nationstates.net/region=`, region)
 }
 
 /**
@@ -104,13 +230,13 @@ export function sanitize (text: string): string
 }
 
 /**
- * Desanitizes the text so it's pretty to look at
+ * Desanitizes the text so it's pretty to look at. And also to provide a proper User-Agent for API and HTML requests
  * @param text The text to be desanitized
  * @returns The desanitized text
  */
 export function desanitize (text: string): string
 {
-    return text.replace(/\b\w*/g, (txt: string) => 
+    return text.replace(/[a-z0-9]*/g, (txt: string) => 
     {
         return txt.charAt(0).toUpperCase() + txt.substring(1)
     }).replace(/_/g, ' ')
@@ -122,7 +248,12 @@ export function desanitize (text: string): string
  */
 export function getTabs(): Promise<browser.tabs.Tab[]>
 {
-    return browser.tabs.query({ currentWindow: true, active: true })
+    return browser.tabs.query(
+        {
+            currentWindow: true,
+            active: true
+        }
+    )
 }
 
 /**

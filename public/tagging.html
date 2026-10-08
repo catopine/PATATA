@@ -6,19 +6,19 @@
     </head>
     
     <body>
-        <h1>PATATA v1.0</h1>
+        <h1 id="heading">PATATA</h1>
         <details id="settings-details">
             <summary>Settings</summary>
             <div id="settings-details">
-                <p></p>
+                <br />
                 <input type="text" id="useragent" placeholder="Enter your main nation" />
-                <p></p>
+                <br />
                 <label for="password">Enter your password below</label>
                 <input type="password" id="password" name="password" />
-                <p></p>
+                <br />
                 <label for="nation-list">Enter your list of switchers separated by a new line for each.</label>
                 <textarea id="nation-list" name="nation-list" rows="10" placeholder="Nation 1&#10;Nation 2&#10;Nation 3..." wrap="off"></textarea>
-                <p></p>
+                <br />
                 <button id="save-settings-btn" type="button">Save</button>
             </div>
         </details>
@@ -26,16 +26,40 @@
             <Summary>Tagging</Summary>
             <div id="tagging-content">
                 <!--<input type="text" id="wfe" placeholder="Enter WFE" />-->
-                <p></p>
+                <br />
+                <fieldset id="tagging-options-fieldset">
+                    <legend>Tagging Options</legend>
+                    <input type="checkbox" id="select-all-input-option" />
+                    <label for="select-all-input-option">Select All</label>
+                    <br />
+                    <br />
+                    <input type="checkbox" id="wfe-input-option" />
+                    <label for="wfe-input-option">Set WFE</label>
+                    <br />
+                    <input type="checkbox" id="flag-banner-input-option" />
+                    <label for="flag-banner-input-option">Set Flag/Banner</label>
+                    <br />
+                    <input type="checkbox" id="embassy-input-option" />
+                    <label for="embassy-input-option">Add/Remove Embassies</label>
+                    <br />
+                    <input type="checkbox" id="tag-input-option" />
+                    <label for="tag-input-option">Add/Remove Tags</label>
+                    <br />
+                    <input type="checkbox" id="dispatch-input-option" />
+                    <label for="dispatch-input-option">Remove Dispatches</label>
+                    <br />
+                    <input type="checkbox" id="poll-input-option" />
+                    <label for="poll-input-option">Remove Polls</label>
+                </fieldset>
                 <label for="wfe-input">Enter WFE</label>
-                <textarea id="wfe-input" name="wfe-input" rows="5"></textarea>
-                <p></p>
+                <textarea id="wfe-input" name="wfe-input" rows="5" disabled></textarea>
+                <br />
                 <label for="flag-input">Select a flag</label>
-                <input type="file" id="flag-input" accept=".png,.gif,.svg,.jpg,.jpeg" />
-                <p></p>
+                <input type="file" id="flag-input" accept=".png,.gif,.svg,.jpg,.jpeg" disabled />
+                <br />
                 <label for="banner-input">Select a banner</label>
-                <input type="file" id="banner-input" accept=".png,.svg,.jpg,.jpeg" />
-                <p></p>
+                <input type="file" id="banner-input" accept=".png,.svg,.jpg,.jpeg" disabled />
+                <br />
                 <!--<details>
                     <summary>Tag Selection</summary>
                     <div>
@@ -43,27 +67,34 @@
                     </div>
                 </details>-->
                 <label for="embassy-input">Enter the list of embassies separated by a new line for each.</label>
-                <textarea id="embassy-input" name="embassy-input" rows="5" placeholder="The Black Hawks" wrap="off"></textarea>
-                <p></p>
-                <fieldset>
+                <textarea id="embassy-input" name="embassy-input" rows="5" placeholder="The Black Hawks" wrap="off" disabled></textarea>
+                <br />
+                <fieldset id="tag-fieldset" disabled>
                     <legend>Select tags to apply</legend>
                     <div>
                         <input type="checkbox" id="invader-tag-input" />
                         <label for="invader-tag-input">Invader</label>
+                        <input type="checkbox" id="lgbt-tag-input" />
+                        <label for="lgbt-tag-input">LGBT</label>
                     </div>
-                    <p>Look I'll add more eventually</p>
+                    <p>I'll add more eventually</p>
                 </fieldset>
+                <br />
                 <button id="tag-start-btn" type="button" hidden>Start</button>
             </div>
         </details>
-        <p id="ping-text" hidden>Checking nations for RO perms, please wait.</p>
+        <p id="ping-text" hidden>Checking nations for RO perms, please do not close the sidebar.</p>
         <div id="tagging-div">
+            <button id="tag-btn" type="button" hidden>Begin Tagging</button>
             <h2 id="tagging-label" hidden></h2>
             <h3 id="tagging-txt" hidden></h3>
-            <button id="tag-btn" type="button" hidden>Begin Tagging</button>
-            <label for='tag-links-list'>Copy the region links.</label>
+            <label for='tag-links-list' hidden>Copy the region links.</label>
             <textarea id="tag-links-list" name="tag-links-list" readonly hidden></textarea>
+            <p id="failed-tags-list" hidden></p>
         </div>
+        <br />
+        <img id="oliver-img" src="oliver.jpg" alt="Horse" class="img-size" hidden />
+        <button id="oliver-btn" type="button" class="button_invis"></button>
         <script type="module" src="app.js"></script>
     </body>
 </html>

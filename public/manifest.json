@@ -1,13 +1,15 @@
 {
     "manifest_version": 3,
     "name": "PATATA",
-    "version": "1.0.0",
+    "version": "1.1.1",
 
     "description": "Tag regions easily (hopefully).",
 
     "icons": 
     {
-        "30": "temp-30.png"
+        "32": "icon.svg",
+        "48": "icon.svg",
+        "64": "icon.svg"
     },
 
     "permissions": ["storage", "activeTab", "scripting", "cookies", "tabs"],
@@ -30,15 +32,16 @@
 
     "sidebar_action": 
     {
-        "default_icon": "temp-30.png",
+        "default_icon": "icon.svg",
         "default_title": "PATATA",
-        "default_panel": "tagging.html"
+        "default_panel": "tagging.html",
+        "open_at_install": false
     },
 
     "content_scripts": 
     [
         {
-            "matches": ["*://*/*"]
+            "matches": ["*://*.nationstates.net/*"]
         }
     ]
 

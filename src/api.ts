@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { sanitize, desanitize, delay, NationRegionPair, RegionInfo, Emb } from './ui'
+import * as ui from './ui.js'
 
 
 // So I can't lift as much of this from Quickdraw as I originally wanted
@@ -24,115 +24,115 @@ import { sanitize, desanitize, delay, NationRegionPair, RegionInfo, Emb } from '
 // I'm also having too much fun with the type declaration and JSDoc comments lmao
 // There is no need for all of this, but I enjoy it
 
-export class NsApi
+/**
+ * Everything relating to accessing the NS API and handling responses
+ */
+export class NsApi 
 {
-    private static myHeaders: Headers
+    private static myHeaders: Headers = new Headers ({})
     private static apiUrl: string = 'https://www.nationstates.net/cgi-bin/api.cgi'
 
+    // Ftr, the authorities param doesn't get the correct value passed to it sometimes
+    // Shouldn't matter tho, except for rare edge cases
     /**
      * This checks if nations have the required perms to tag 
-     * @param nations The list of nations to check for tagging perms
+     * @param nations nations The list of nations to check for tagging perms
+     * @param authorities The authorities required to tag
      * @returns Any regions with tagging perms and its corresponding region
      */
-    async getNationsWithTagPerms (nations: string[]): Promise<NationRegionPair[]>
+    async getNationsWithTagPerms (nations: string[], authorities: ui.Auth): Promise<ui.NationRegionPair[]>
     {
-        let regions: string[] = []
-                let nationRegionPairs: NationRegionPair[] = []
-                try
+        // These can be constants, right?
+        const regions: string[] = []
+        const nationRegionPairs: ui.NationRegionPair[] = []
+        try
+        {
+            for await (const [i, value] of nations.entries())
+            {
+                const url: string = `${NsApi.apiUrl}?nation=${nations[i]}&q=region`
+                const apiResponse = await NsApi.apiRequest(url)
+        
+                const xmlParser = new DOMParser()
+                // There's no difference between text/xml and application/xml
+                const parsedResponse = xmlParser.parseFromString(apiResponse, 'text/xml')
+                const parseError = parsedResponse.querySelector('parsererror')
+                if (parseError !== null)
                 {
-                    for await (const [i, value] of nations.entries())
-                    {
-                        const url: string = `${NsApi.apiUrl}?nation=${nations[i]}&q=region`
-                        const apiResponse: string = await NsApi.apiRequest(url)
-        
-                        const xmlParser: DOMParser = new DOMParser()
-                        // There's no difference between text/xml and application/xml
-                        const parsedResponse = xmlParser.parseFromString(apiResponse, 'text/xml')
-                        const parseError: Element | null = parsedResponse.querySelector('parsererror')
-                        if (parseError !== null)
-                        {
-                            throw new Error('XML parsing error')
-                        }
-                        const returnedRegion: string = parsedResponse.getElementsByTagName('REGION')[0]!.innerHTML
-                        regions.push(sanitize(returnedRegion))
-                    }
-                    
-                    for await (const [i, value] of regions.entries())
-                    {
-                        const url: string = `${NsApi.apiUrl}?region=${regions[i]}&q=officers`
-                        const apiResponse: string = await NsApi.apiRequest(url)
-        
-                        const xmlParser: DOMParser = new DOMParser()
-                        const parsedResponse = xmlParser.parseFromString(apiResponse, 'text/xml')
-                        const parseError: Element | null = parsedResponse.querySelector('parsererror')
-                        if (parseError !== null)
-                        {
-                            throw new Error('XML parsing error')
-                        }
-                        const returnedNationsCollection: HTMLCollection = parsedResponse.getElementsByTagName('OFFICER')
-                        for await (const htmlNation of returnedNationsCollection)
-                        {
-                            const returnednationName: string = htmlNation.getElementsByTagName('NATION')[0]!.innerHTML
-                            if (nations[i] !== returnednationName)
-                            {
-                                continue
-                            }
-                            const returnedNationAuthority: string = htmlNation.getElementsByTagName('AUTHORITY')[0]!.innerHTML
-                            // I want stuff to be user selectable like how it was in Henson
-                            // But I want to get this working first
-                            // So this is temporary and to be replaced
-                            let pollAuth: boolean = true
-                            let appearAuth: boolean = true
-                            let commAuth: boolean = true
-                            let embAuth: boolean = true
-                            if (pollAuth && !returnedNationAuthority.includes('P'))
-                            {
-                                break
-                            }
-                            else if (appearAuth && !returnedNationAuthority.includes('A'))
-                            {
-                                break
-                            }
-                            else if (commAuth && !returnedNationAuthority.includes('C'))
-                            {
-                                break
-                            }
-                            else if (embAuth && !returnedNationAuthority.includes('E'))
-                            {
-                                break
-                            }
-                            else
-                            {
-                                nationRegionPairs.push({ nation: nations[i], region: regions[i], authorities: returnedNationAuthority })
-                                break
-                            }
-                        }
-                    }
-        
-                    return nationRegionPairs
+                    throw new Error('XML parsing error')
                 }
-                catch(error)
+                const returnedRegion = parsedResponse.getElementsByTagName('REGION')[0]!.innerHTML
+                regions.push(ui.sanitize(returnedRegion))
+            }
+                  
+            for await (const [i, value] of regions.entries())
+            {
+                const url: string = `${NsApi.apiUrl}?region=${regions[i]}&q=officers`
+                const apiResponse = await NsApi.apiRequest(url)
+
+                const xmlParser = new DOMParser()
+                const parsedResponse = xmlParser.parseFromString(apiResponse, 'text/xml')
+                const parseError = parsedResponse.querySelector('parsererror')
+                if (parseError !== null)
                 {
-                    console.error(error)
-                    throw new Error
+                    throw new Error('XML parsing error')
                 }
+                const returnedNationsCollection = parsedResponse.getElementsByTagName('OFFICER')
+                for await (const htmlNation of returnedNationsCollection)
+                {
+                    const returnednationName = htmlNation.getElementsByTagName('NATION')[0]!.innerHTML
+                    if (nations[i] !== returnednationName)
+                    {
+                        continue
+                    }
+                    const returnedNationAuthority = htmlNation.getElementsByTagName('AUTHORITY')[0]!.innerHTML
+                    if (authorities.polls && !returnedNationAuthority.includes('P'))
+                    {
+                        break
+                    }
+                    else if (authorities.appearance && !returnedNationAuthority.includes('A'))
+                    {
+                        break
+                    }
+                    else if (authorities.communications && !returnedNationAuthority.includes('C'))
+                    {
+                        break
+                    }
+                    else if (authorities.embassies && !returnedNationAuthority.includes('E'))
+                    {
+                        break
+                    }
+                    else
+                    {
+                        nationRegionPairs.push({ nation: nations[i], region: regions[i], authorities: returnedNationAuthority })
+                        break
+                    }
+                }
+            }
+        
+            return nationRegionPairs
+        }
+        catch(error)
+        {
+            console.error(error)
+            throw new Error
+        }
     }
 
     /**
-     * This gets info on a region
+     * This gets the info on the stuff to be changed on a region to tag it
      * @param region The region to get info about
      * @returns The info on the region, or null if it fails
      */
-    async getRegionInfo (region: string): Promise<RegionInfo | null>
+    async getRegionInfo (region: string): Promise<ui.RegionInfo | null>
     {
         try
         {
-            const url: string = `${NsApi.apiUrl}?region=${region}&q=embassies+tags+messages+dispatches`
-            const apiResponse: string = await NsApi.apiRequest(url)
+            const url: string = `${NsApi.apiUrl}?region=${region}&q=embassies+tags+messages+dispatches+poll`
+            const apiResponse = await NsApi.apiRequest(url)
 
-            const xmlParser: DOMParser = new DOMParser()
+            const xmlParser = new DOMParser()
             const parsedResponse = xmlParser.parseFromString(apiResponse, 'text/xml')
-            const parseError: Element | null = parsedResponse.querySelector('parsererror')
+            const parseError = parsedResponse.querySelector('parsererror')
             if (parseError !== null)
             {
                 throw new Error('XML parsing error')
@@ -140,35 +140,38 @@ export class NsApi
 
             const returnedDispatchesList: string = parsedResponse.getElementsByTagName('DISPATCHES')[0]!.innerHTML
             const returnedDispatches: string[] = returnedDispatchesList.split(',')
-            // No idea if this is actually an HTMLCollection and this might break everything
-            const returnedEmbassiesCollection: HTMLCollectionOf<Element> = parsedResponse.getElementsByTagName('EMBASSY')
-            const returnedEmbassies: Emb[] = []
+            const returnedEmbassiesCollection = parsedResponse.getElementsByTagName('EMBASSY')
+            const returnedEmbassies: ui.Emb[] = []
             const embCode: string[] = ['', 'invited', 'pending', 'requested', 'closing']
             for await (const element of returnedEmbassiesCollection)
             {
                 // Could probably do this in a single statement
-                // But ain't a rat's chance in hell I know how
                 if (element.hasAttributes())
                 {
-                    returnedEmbassies.push({ name: sanitize(element.innerHTML), embCode: embCode.indexOf(element.attributes.getNamedItem('type')!.value) })
+                    returnedEmbassies.push({ name: ui.sanitize(element.innerHTML), embCode: embCode.indexOf(element.attributes.getNamedItem('type')!.value) })
                 }
                 else
                 {
                     // Nota has this, but I don't really get why
                     // Cause this should run on most regions, right? Cause they don't have attributes?
                     // Prob language differences
-                    returnedEmbassies.push({ name: sanitize(element.innerHTML), embCode: 0 })
+                    returnedEmbassies.push({ name: ui.sanitize(element.innerHTML), embCode: 0 })
                 }
             }
             const returnedTagsCollection: HTMLCollectionOf<Element> = parsedResponse.getElementsByTagName('TAG')
             // Wish I had known .map when I wrote getNationsWithTagPerms, but no way I'm changing that now
             const returnedTags: string[] = Array.from(returnedTagsCollection).map(Element => Element.innerHTML)
-            // Later add messages and shit
-            const ret: RegionInfo =
+            // It's interesting that I don't think there's any way to get a queued poll with the API
+            // And I don't care enough to get it from the HTML site
+            const returnedPollCollection: HTMLCollectionOf<Element> = parsedResponse.getElementsByTagName('POLL')
+            const returnedPoll = returnedPollCollection.length === 0 ? null : returnedPollCollection[0]!.id
+            // Later add messages and stuff
+            const ret: ui.RegionInfo =
             {
                 dispatches: returnedDispatches,
                 embs: returnedEmbassies,
-                tags: returnedTags
+                tags: returnedTags,
+                poll: returnedPoll
             }
             return ret
         }
@@ -192,7 +195,7 @@ export class NsApi
             {
                 throw new Error ('Set a main nation before using the API')
             }
-            delay(600)
+            ui.delay(600)
             const apiResponse: Response = await fetch(url)
             return await apiResponse.text()
         }
@@ -209,7 +212,8 @@ export class NsApi
     }
 
     /**
-     * This creates or overwrites a User-Agent header to be sent to the server when making API requests.  
+     * This creates or overwrites a User-Agent header to be sent to the server when making API requests.
+     * @param nation The user's main nation
      */
     setUA (nation: string): void
     {
@@ -222,11 +226,8 @@ export class NsApi
         // Can set UA in broswer (somehow)
         // Haha that's a reference
         // I'm so funny
-        NsApi.myHeaders.set('User-Agent', `PATATA/1.0.0 (by:Tyrannical Porcupines United\u{003B} usedBy:${desanitize(sanitizedNation)})`)
-        // Fuck this shit and fuck the ns rules its a shit game anyway.
+        NsApi.myHeaders.set('User-Agent', `PATATA/${ui.PATATA_VERSION} (by:Tyrannical Porcupines United\u{003B} usedBy:${ui.desanitize(sanitizedNation)})`)
         // Hey at least I managed to avoid typing a semicolon
-        // I don't have a fucking clue if this shit will actually run.
-        // Well I know it will run. 
-        // I just don't have clue if it will do what it's supposed to.
+        // Here's hoping this stuff actually works
     }
 }

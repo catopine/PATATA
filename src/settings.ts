@@ -15,18 +15,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { sanitize, desanitize } from './ui'
+import * as html from './html.js'
+import { sanitize, desanitize } from './ui.js'
 
-interface Settings
+export interface Settings
 {
     ua: string,
     pass: string,
     nations: string[]
 }
-
-const nationListInput: HTMLTextAreaElement = document.getElementById('nation-list') as HTMLTextAreaElement
-const useragentInput: HTMLInputElement = document.getElementById('useragent') as HTMLInputElement
-const passInput: HTMLInputElement = document.getElementById('password') as HTMLInputElement
 
 export let userSettings: Settings
 let nationList: string
@@ -41,11 +38,13 @@ export async function getStoredSettings(): Promise<void>
     try
     {
         userSettings = await browser.storage.local.get() as Settings
-        nationListInput.value = desanitize(userSettings.nations.join('\n'))
-        useragentInput.value = desanitize(userSettings.ua)
+        html.nationListInput.value = desanitize(userSettings.nations.join('\n'))
+        html.useragentInput.value = desanitize(userSettings.ua)
+        html.passInput.value = userSettings.pass
     }
     catch (error)
     {
+        html.taggingDetails.hidden = true
         console.error(error)
     }
 }
@@ -60,8 +59,8 @@ export async function saveSettings (settings: Settings): Promise<void>
     try
     {
         // Getting the inputs
-        nationList = nationListInput.value
-        useragent = useragentInput.value
+        nationList = html.nationListInput.value
+        useragent = html.useragentInput.value
         if (nationList === '' || useragent === '')
         {
             throw new Error("Please don't leave either input blank")
@@ -76,11 +75,11 @@ export async function saveSettings (settings: Settings): Promise<void>
         useragent = sanitize(useragent)
         userSettings.nations = nations
         userSettings.ua = useragent
-        userSettings.pass = passInput.value
+        userSettings.pass = html.passInput.value
 
-        console.log(userSettings.nations)
-        console.log(userSettings.ua)
-        console.log(userSettings.pass)
+        //console.log(userSettings.nations)
+        //console.log(userSettings.ua)
+        html.taggingDetails.hidden = false
     }
     catch (error)
     {
@@ -89,10 +88,12 @@ export async function saveSettings (settings: Settings): Promise<void>
 
     // Now actually saving the stuff
     // This could probably be one try block tbh
+    // No honestly I don't think the other stuff needs to be in a try block
     try
     {
         await browser.storage.local.set(userSettings)
         // Unhide stuff here PORC
+        // ...what stuff was hidden?
     }
     catch (error)
     {

@@ -15,97 +15,241 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { sanitize, TagSettings } from './ui'
-
-// All of the various inputs for tagging
-const wfeInput: HTMLTextAreaElement = document.getElementById('wfe-input') as HTMLTextAreaElement
-const flagInput: HTMLInputElement = document.getElementById('flag-input') as HTMLInputElement
-const bannerInput: HTMLInputElement = document.getElementById('banner-input') as HTMLInputElement
-const embassyInput: HTMLTextAreaElement = document.getElementById('embassy-input') as HTMLTextAreaElement
-// Might be easier to make all the tags part of an interface, but I want proof of concept first
-// Especially cause of not necessarily needing all of them
-const invaderTagInput: HTMLInputElement = document.getElementById('invader-tag-input') as HTMLInputElement
+import * as html from './html.js'
+import { sanitize, TagSettings } from './ui.js'
 
 // Booleans to make sure all of the stuff has been inputted
-// Prob might be worth it to make the different things selectable, but I'll do that later
 let wfeInputCheck: boolean = false
 let flagInputCheck: boolean = false
 let bannerInputCheck: boolean = false
 let embassyInputCheck: boolean = false
 let anyTagInputCheck: boolean = false
 
-export let tagSettings: TagSettings =
+export const tagSettings: TagSettings =
 {
     wfe: '',
     flag: null,
     banner: null,
     embassies: [''],
-    tags: []
+    tags: [],
+    auth:
+    {
+        appearance: false,
+        communications: false,
+        embassies: false,
+        polls: false
+    }
+}
+
+const tagWhat =
+{
+    wfe: false,
+    flagAndBanner: false,
+    embs: false,
+    tags: false,
+    dispatches: false,
+    poll: false
 }
 
 /**
  * This ensures all the fields are filled out.
  * Ftr, I originally was gonna do API through here, but now I think it'll be too complicated.
  * But I also don't want anyone starting before everything is filled out.
- * So this is kinda weird and jank.
+ * So this is kinda weird and jank. And it also doesn't even do that properly lmao.
+ * Worst case tho, the user will tag more than they are wanting to, so idc
  */
-function checkInputs()
+async function checkInputs(): Promise<void>
 {
-    if (wfeInputCheck && flagInputCheck && bannerInputCheck && embassyInputCheck && anyTagInputCheck)
+    tagSettings.auth.appearance = html.wfeInputOption.checked || html.flagBannerInputOption.checked || html.tagInputOption.checked || html.dispatchInputOption.checked ? true : false
+    tagSettings.auth.embassies = html.embassyInputOption.checked ? true : false
+    tagSettings.auth.polls = html.pollInputOption.checked ? true : false
+
+    //console.log(`wfe: ${tagSettings.wfe}, flag: ${tagSettings.flag}, banner: ${tagSettings.banner}, emb: ${tagSettings.embassies}, tag: ${tagSettings.tags}`)
+    //console.log(`auth: a: ${tagSettings.auth.appearance}, c: ${tagSettings.auth.communications}, e: ${tagSettings.auth.embassies}, p: ${tagSettings.auth.polls}`)
+    // This doesn't work as intended, but ig I'll just hope no one deselects anything after selecting it, cause otherwise it'll break
+    //if (((wfeInputCheck || wfeInputOption.disabled) && ((flagInputCheck && bannerInputCheck) || flagBannerInputOption.disabled) && (embassyInputCheck|| embassyInputOption.disabled) && (anyTagInputCheck || tagFieldset.disabled)) && !(wfeInputOption.disabled && flagBannerInputOption.disabled && embassyInputOption.disabled && tagFieldset.disabled))
+    if ((wfeInputCheck || !html.wfeInputOption.checked) && ((flagInputCheck && bannerInputCheck) || !html.flagBannerInputOption.checked) && (embassyInputCheck || !html.embassyInputOption.checked) && (anyTagInputCheck || !html.tagInputOption.checked) || ((html.dispatchInputOption.checked || html.pollInputOption.checked) && !html.wfeInputOption.checked && !html.flagBannerInputOption.checked && !html.embassyInputOption.checked && !html.tagInputOption.checked))
+    //if ((wfeInputCheck || !tagWhat.wfe) && ((flagInputCheck && bannerInputCheck) || !tagWhat.flagAndBanner) && (embassyInputCheck || !tagWhat.embs) && (anyTagInputCheck || !tagWhat.tags) || ((tagWhat.dispatches || tagWhat.poll) && !html.wfeInputOption.checked && !html.flagBannerInputOption.checked && !html.embassyInputOption.checked && !html.tagInputOption.checked))
     {
-        const startBtn: HTMLButtonElement = document.getElementById('tag-start-button') as HTMLButtonElement
-        startBtn.hidden = false
+        try
+        {
+            await browser.storage.session.set(tagWhat)
+        }
+        catch (error)
+        {
+            console.error(error)
+        }
+        html.startBtn.hidden = false
+    }
+    else
+    {
+        html.startBtn.hidden = true
     }
 }
 
+html.selectAllInputOption.addEventListener('change', (ev) =>
+{
+    !html.wfeInputOption.checked && html.wfeInputOption.click()
+    html.wfeInputOption.disabled = html.selectAllInputOption.checked
+    !html.flagBannerInputOption.checked && html.flagBannerInputOption.click()
+    html.flagBannerInputOption.disabled = html.selectAllInputOption.checked
+    !html.embassyInputOption.checked && html.embassyInputOption.click()
+    html.embassyInputOption.disabled = html.selectAllInputOption.checked
+    !html.tagInputOption.checked && html.tagInputOption.click()
+    html.tagInputOption.disabled = html.selectAllInputOption.checked
+    !html.dispatchInputOption.checked && html.dispatchInputOption.click()
+    html.dispatchInputOption.disabled = html.selectAllInputOption.checked
+    !html.pollInputOption.checked && html.pollInputOption.click()
+    html.pollInputOption.disabled = html.selectAllInputOption.checked
+
+    // This is so that if they are all selected and someone clicks it to deselect them all
+    // Can't imagine this will happen much, but don't hurt none
+    html.wfeInputOption.checked && html.flagBannerInputOption.checked && html.embassyInputOption.checked && html.tagInputOption.checked && html.dispatchInputOption.checked && html.pollInputOption.checked && (html.wfeInputOption.click(), html.flagBannerInputOption.click(), html.embassyInputOption.click(), html.tagInputOption.click(), html.dispatchInputOption.click(), html.pollInputOption.click())
+})
+
+html.wfeInputOption.addEventListener('change', (ev) =>
+{
+    html.wfeInput.disabled = !html.wfeInputOption.checked
+    tagSettings.wfe = html.wfeInputOption.checked ? html.wfeInput.value : ''
+    tagSettings.auth.appearance = html.wfeInputOption.checked || html.flagBannerInputOption.checked || html.tagInputOption.checked || html.dispatchInputOption.checked ? true : false
+    tagWhat.wfe = html.wfeInputOption.checked ? true : false
+})
+
+html.flagBannerInputOption.addEventListener('change', (ev) =>
+{
+    html.flagInput.disabled = !html.flagBannerInputOption.checked
+    html.bannerInput.disabled = !html.flagBannerInputOption.checked
+    // No idea if this will work lmao
+    tagSettings.flag = html.flagBannerInputOption.checked ? (html.flagInput.files instanceof FileList ? html.flagInput.files[0] as File : null) : null
+    tagSettings.banner = html.flagBannerInputOption.checked ? (html.bannerInput.files instanceof FileList ? html.bannerInput.files[0] as File : null) : null
+    tagSettings.auth.appearance = html.wfeInputOption.checked || html.flagBannerInputOption.checked || html.tagInputOption.checked || html.dispatchInputOption.checked ? true : false
+    tagWhat.flagAndBanner = html.flagBannerInputOption.checked ? true : false
+})
+
+html.embassyInputOption.addEventListener('change', (ev) =>
+{
+    html.embassyInput.disabled = !html.embassyInputOption.checked
+    if (html.embassyInputOption.checked)
+    {
+        let embassyList: string = html.embassyInput.value.trim()
+        let embassies: string[] = embassyList.split(/\n+/)
+        for (const [i, value] of embassies.entries())
+        {
+            embassies[i] = sanitize(value as string)
+            embassies[i] = embassies[i].trim()
+        }
+        tagSettings.embassies = embassies
+    }
+    else
+    {
+        tagSettings.embassies = []
+    }
+    tagSettings.auth.embassies = html.embassyInputOption.checked ? true : false
+    tagWhat.embs = html.embassyInputOption.checked ? true : false
+})
+
+html.tagInputOption.addEventListener('change', (ev) =>
+{
+    html.tagFieldset.disabled = !html.tagInputOption.checked
+    tagSettings.tags = []
+    if (html.tagInputOption.checked)
+    {
+        html.invaderTagInput.checked && tagSettings.tags.push('Invader')
+        html.lgbtTagInput.checked && tagSettings.tags.push('LGBT')
+        // Can add other tags here in future
+    }
+    tagSettings.auth.appearance = html.wfeInputOption.checked || html.flagBannerInputOption.checked || html.tagInputOption.checked || html.dispatchInputOption.checked ? true : false
+    tagWhat.tags = html.tagInputOption.checked ? true : false
+})
+
+html.dispatchInputOption.addEventListener('change', (ev) =>
+{
+    tagWhat.dispatches = html.dispatchInputOption.checked ? true : false
+    html.dispatchInputOption.checked && checkInputs()
+})
+
+html.pollInputOption.addEventListener('change', (ev) =>
+{
+    tagWhat.poll = html.pollInputOption.checked ? true : false
+    html.pollInputOption.checked && checkInputs()
+})
+
+
 // Frankly not a fan of these event listeners
 // But hey, it works ig
-wfeInput.addEventListener('change', (ev) =>
+html.wfeInput.addEventListener('change', (ev) =>
 {
     wfeInputCheck = true
-    tagSettings.wfe = wfeInput.value
+    tagSettings.wfe = html.wfeInput.value
     checkInputs()
 })
 
-flagInput.addEventListener('change', (ev) =>
+html.flagInput.addEventListener('change', (ev) =>
 {
-    flagInputCheck = true
-    if (flagInput.files!.length === 1)
+    if (html.flagInput.files!.length === 1)
     {
-        tagSettings.flag = flagInput.files![0] as File
+        flagInputCheck = true
+        tagSettings.flag = html.flagInput.files![0] as File
+        checkInputs()
     }
-    checkInputs()
 })
 
-bannerInput.addEventListener('change', (ev) =>
+html.bannerInput.addEventListener('change', (ev) =>
 {
-    bannerInputCheck = true
-    if (bannerInput.files!.length === 1)
+    if (html.bannerInput.files!.length === 1)
     {
-        tagSettings.banner = bannerInput.files![0] as File
+        bannerInputCheck = true
+        tagSettings.banner = html.bannerInput.files![0] as File
+        checkInputs()
     }
-    checkInputs()
 })
 
-embassyInput.addEventListener('change', (ev) =>
+html.embassyInput.addEventListener('change', (ev) =>
 {
     embassyInputCheck = true
-    let embassyList: string = embassyInput.value.trim()
+    let embassyList: string = html.embassyInput.value.trim()
     let embassies: string[] = embassyList.split(/\n+/)
     for  (const [i, value] of embassies.entries())
     {
-        embassies[i] = sanitize(embassies[i] as string)
+        embassies[i] = sanitize(value as string)
         embassies[i] = embassies[i].trim()
     }
     tagSettings.embassies = embassies
     checkInputs()
 })
 
-invaderTagInput.addEventListener('change', (ev) =>
+html.invaderTagInput.addEventListener('change', (ev) =>
 {
-    anyTagInputCheck = true
-    // PORC RETURN HERE
-    // I figure the name pushed needs to be the actual thing, which I can do
-    tagSettings.tags.push('invader')
-    checkInputs()
+    if (html.invaderTagInput.checked)
+    {
+        anyTagInputCheck = true
+        tagSettings.tags.push('Invader')
+        checkInputs()
+    }
+    else
+    {
+        tagSettings.tags = tagSettings.tags.filter((tag) => tag !== 'Invader')
+        if (tagSettings.tags.length === 0)
+        {
+            anyTagInputCheck = false
+        }
+    }
+})
+
+html.lgbtTagInput.addEventListener('change', (ev) =>
+{
+    if (html.lgbtTagInput.checked)
+    {
+        anyTagInputCheck = true
+        tagSettings.tags.push('LGBT')
+        checkInputs()
+    }
+    else
+    {
+        tagSettings.tags = tagSettings.tags.filter((tag) => tag !== 'LGBT')
+        if (tagSettings.tags.length === 0)
+        {
+            anyTagInputCheck = false
+        }
+    }
 })
