@@ -41,7 +41,8 @@
     "content_scripts": 
     [
         {
-            "matches": ["*://*.nationstates.net/*"]
+            "matches": ["*://*.nationstates.net/*"],
+            "js": ["content.js"]
         }
     ]
 

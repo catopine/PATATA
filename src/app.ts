@@ -21,6 +21,7 @@ import { NsApi } from './api.js'
 import { NsHtml } from './tagging.js'
 import * as ui from './ui.js'
 import { tagSettings } from './checking.js'
+import * as content from './content.js'
 
 // Idk if I can do this except by definining it here
 const nsApi: NsApi = new NsApi()
@@ -137,7 +138,7 @@ async function tag (nationsWithPerms: ui.NationRegionPair[]): Promise<void>
                 }
             case 'Set WFE':
                 {
-                    if (!nsHtml.setWfe(currentRegion, currentStuff.Chk, currentStuff.Pin, tagSettings.wfe))
+                    if (!(await nsHtml.setWfe(currentRegion, currentStuff.Chk, currentStuff.Pin, tagSettings.wfe)))
                     {
                         html.taggingText.textContent = `Setting the WFE of ${currentRegion} failed.`
                         failedTags.push(currentNation)
@@ -437,6 +438,7 @@ async function tag (nationsWithPerms: ui.NationRegionPair[]): Promise<void>
     }
     
     html.tagBtn.disabled = false
+    await content.enableBtnsForSimul()
 }
 
 /**
@@ -544,8 +546,10 @@ function setup (): void
     html.tagBtn.addEventListener('click', (ev) =>
     {
         html.tagBtn.disabled = true
-        nsHtml.setUserClick()
+        content.disableBtnsForSimul()
+        // Does this need to be awaited? If yes, that's a pain
         ui.delay(100)
+        nsHtml.setUserClick()
         tag(nationsWithPerms)
     })
 

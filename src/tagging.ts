@@ -204,8 +204,20 @@ export class NsHtml
             }
 
             const htmlResponseString = await htmlResponse.text()
+
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            // Thank you Sweeze for the idea of this to keep people from gameing this
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+
             // No idea if it would return null or undefined, so I'll just have both in case
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('World Factbook Entry updated!')
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('World Factbook Entry updated!')
             
             return successful
         }
@@ -462,7 +474,17 @@ export class NsHtml
             }
 
             const htmlResponseString: string = await htmlResponse.text()
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('banner/flag updated!')
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+            
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('banner/flag updated!')
             
             return successful
         }
@@ -586,7 +608,17 @@ export class NsHtml
             }
 
             const htmlResponseString: string = await htmlResponse.text()
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && (htmlResponseString.includes(' rejected.') || htmlResponseString.includes(' demolition.') || htmlResponseString.includes(' withdrawn.') || htmlResponseString.includes(' aborted.') || htmlResponseString.includes(' cancelled.'))
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && (htmlResponseString.includes(' rejected.') || htmlResponseString.includes(' demolition.') || htmlResponseString.includes(' withdrawn.') || htmlResponseString.includes(' aborted.') || htmlResponseString.includes(' cancelled.'))
             if (!successful)
             {
                 throw new Error (`Rejecting embassy of ${regionToClose.name} from ${region} failed.`)
@@ -676,7 +708,17 @@ export class NsHtml
             }
 
             const htmlResponseString: string = await htmlResponse.text()
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' has been sent.')
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' has been sent.')
 
             return successful
         }
@@ -761,7 +803,17 @@ export class NsHtml
             }
 
             const htmlResponseString: string = await htmlResponse.text()
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' updated!')
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+            
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' updated!')
 
             return successful
         }
@@ -846,7 +898,17 @@ export class NsHtml
             }
 
             const htmlResponseString: string = await htmlResponse.text()
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' updated!')
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+            
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' updated!')
 
             return successful
         }
@@ -931,7 +993,17 @@ export class NsHtml
             }
 
             const htmlResponseString: string = await htmlResponse.text()
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' removed.')
+            const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }
+
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+            
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes(' removed.')
 
             return successful
         }
@@ -1007,9 +1079,6 @@ export class NsHtml
             }
 
             const htmlResponseString: string = await htmlResponse.text()
-            const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('Poll removed.')
-
-            // Need to check if there is now a queued poll
             const htmlParser: DOMParser = new DOMParser()
             const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
             const parseError = parsedResponse.querySelector('parsererror')
@@ -1018,6 +1087,19 @@ export class NsHtml
                 throw new Error('HTML parsing error')
             }
 
+            const successful: boolean = !!parsedResponse.querySelector('p.info')
+            
+            //const successful: boolean = htmlResponseString !== null && htmlResponseString !== undefined && htmlResponseString.includes('Poll removed.')
+
+            /*const htmlParser: DOMParser = new DOMParser()
+            const parsedResponse = htmlParser.parseFromString(htmlResponseString, 'text/html')
+            const parseError = parsedResponse.querySelector('parsererror')
+            if (parseError !== null)
+            {
+                throw new Error('HTML parsing error')
+            }*/
+
+            // Need to check if there is now a queued poll
             const newPollCheck: NodeListOf<HTMLInputElement> = parsedResponse.getElementsByName('deletepollbutton') as NodeListOf<HTMLInputElement>
             // If there is nothing in the list, there is no other poll to delete
             if (newPollCheck.length === 0)

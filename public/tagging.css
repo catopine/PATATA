@@ -30,3 +30,7 @@ button {
     width: 320px;
     height: auto;
 }
+
+.disabledForSimultaneity {
+    opacity: 0;
+}

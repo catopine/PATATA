@@ -139,7 +139,7 @@ export class NsApi
             }
 
             const returnedDispatchesList: string = parsedResponse.getElementsByTagName('DISPATCHES')[0]!.innerHTML
-            const returnedDispatches: string[] = returnedDispatchesList.split(',')
+            const returnedDispatches: string[] = returnedDispatchesList.length > 0 ? returnedDispatchesList.split(',') : []
             const returnedEmbassiesCollection = parsedResponse.getElementsByTagName('EMBASSY')
             const returnedEmbassies: ui.Emb[] = []
             const embCode: string[] = ['', 'invited', 'pending', 'requested', 'closing']
@@ -195,8 +195,18 @@ export class NsApi
             {
                 throw new Error ('Set a main nation before using the API')
             }
-            ui.delay(600)
-            const apiResponse: Response = await fetch(url)
+            await ui.delay(600)
+            const apiRequest: Request = new Request(url,
+                {
+                    headers: NsApi.myHeaders
+                }
+            )
+            if (apiRequest.headers.get('User-Agent') === null)
+            {
+                throw new Error ('Set a main nation before using the API')
+            }
+
+            const apiResponse: Response = await fetch(apiRequest)
             return await apiResponse.text()
         }
         catch(error)
