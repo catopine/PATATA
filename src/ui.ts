@@ -23,7 +23,7 @@
 /**
  * Version number of PATATA
  */
-export const PATATA_VERSION: string = `1.1.1`
+export const PATATA_VERSION: string = `1.1.2`
 
 /**
  * The stuff that is needed to verify that the user is who they say they are.
