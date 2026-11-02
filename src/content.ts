@@ -24,16 +24,17 @@ export async function disableBtnsForSimul (): Promise<void>
     try
     {
         const formList: HTMLCollectionOf<HTMLFormElement> = document.getElementsByTagName('form')
-        if (formList.length < 0)
+        // Array length can never be below 0, so this is always false. Check if 0 or equal to below 0
+        if (formList.length === 0)
         {
             // No forms to submit, ergo, nothing that can send a request to disable
             return
         }
         // Don't think this needs an await, but I really don't know
-        for await (const form of formList)
+        for (const form of formList)
         {
             const btnList: NodeListOf<HTMLInputElement | HTMLButtonElement> = form.querySelectorAll('input[type="submit"], button')
-            for await (const btn of btnList)
+            for (const btn of btnList)
             {
                 btn.disabled = true
                 btn.classList.add('disabledForSimultaneity')
@@ -54,7 +55,7 @@ export async function enableBtnsForSimul (): Promise<void>
     try
     {
         const disabledBtns: HTMLCollectionOf<HTMLInputElement | HTMLButtonElement> = document.getElementsByClassName('disabledForSimultaneity') as HTMLCollectionOf<HTMLInputElement | HTMLButtonElement>
-        for await (const btn of disabledBtns)
+        for (const btn of disabledBtns)
         {
             btn.disabled = false
             btn.classList.remove('disabledForSimultaneity')

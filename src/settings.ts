@@ -25,6 +25,7 @@ export interface Settings
     nations: string[]
 }
 
+// Consider giving default values, if the default values are found instead of user values it errors -Luci
 export let userSettings: Settings
 let nationList: string
 let nations: string[]
@@ -67,7 +68,7 @@ export async function saveSettings (settings: Settings): Promise<void>
         }
         nationList = nationList.trim()
         nations = nationList.split(/\n+/)
-        for await (const [i, value] of nations.entries())
+        for (const [i, value] of nations.entries())
         {
             nations[i] = sanitize(nations[i] as string)
             nations[i] = nations[i].trim()

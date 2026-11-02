@@ -73,7 +73,7 @@ async function tag (nationsWithPerms: ui.NationRegionPair[]): Promise<void>
         if (failedTags.length !== 0)
         {
             html.failedTagsList.hidden = false
-            for await (const [i, value] of failedTags.entries())
+            for (const [i, value] of failedTags.entries())
             {
                 failedTags[i] = ui.desanitize(value)
             }
@@ -547,8 +547,6 @@ function setup (): void
     {
         html.tagBtn.disabled = true
         content.disableBtnsForSimul()
-        // Does this need to be awaited? If yes, that's a pain
-        ui.delay(100)
         nsHtml.setUserClick()
         tag(nationsWithPerms)
     })

@@ -29,7 +29,7 @@ import { tagSettings } from './checking.js'
 export class NsHtml
 {
     private static myHeaders: Headers = new Headers({})
-    private static userClickTime: string
+    private static userClickTime: string = ''
     private static httpUrl: string = 'https://www.nationstates.net'
 
     /**
