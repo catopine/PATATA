@@ -47,7 +47,7 @@ export class NsApi
         const nationRegionPairs: ui.NationRegionPair[] = []
         try
         {
-            for await (const [i, value] of nations.entries())
+            for (const [i, value] of nations.entries())
             {
                 const url: string = `${NsApi.apiUrl}?nation=${nations[i]}&q=region`
                 const apiResponse = await NsApi.apiRequest(url)
@@ -64,7 +64,7 @@ export class NsApi
                 regions.push(ui.sanitize(returnedRegion))
             }
                   
-            for await (const [i, value] of regions.entries())
+            for (const [i, value] of regions.entries())
             {
                 const url: string = `${NsApi.apiUrl}?region=${regions[i]}&q=officers`
                 const apiResponse = await NsApi.apiRequest(url)
@@ -77,7 +77,7 @@ export class NsApi
                     throw new Error('XML parsing error')
                 }
                 const returnedNationsCollection = parsedResponse.getElementsByTagName('OFFICER')
-                for await (const htmlNation of returnedNationsCollection)
+                for (const htmlNation of returnedNationsCollection)
                 {
                     const returnednationName = htmlNation.getElementsByTagName('NATION')[0]!.innerHTML
                     if (nations[i] !== returnednationName)
@@ -114,7 +114,7 @@ export class NsApi
         catch(error)
         {
             console.error(error)
-            throw new Error
+            throw new Error()
         }
     }
 
@@ -143,7 +143,7 @@ export class NsApi
             const returnedEmbassiesCollection = parsedResponse.getElementsByTagName('EMBASSY')
             const returnedEmbassies: ui.Emb[] = []
             const embCode: string[] = ['', 'invited', 'pending', 'requested', 'closing']
-            for await (const element of returnedEmbassiesCollection)
+            for (const element of returnedEmbassiesCollection)
             {
                 // Could probably do this in a single statement
                 if (element.hasAttributes())
@@ -212,12 +212,13 @@ export class NsApi
         catch(error)
         {
             console.error(error)
-            if (error === 'Set a main nation before using the API')
+            // Ensure the error is an Error and compare to message, otherwise always false
+            if (error instanceof Error && error.message === 'Set a main nation before using the API')
             {
                 console.error(`Frankly I'm impressed you managed to get an error here.`)
                 console.error(`This is like me third check to make sure you've set a user agent.`)
             }
-            throw new Error
+            throw new Error()
         }
     }
 
