@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "PATATA",
-    "version": "1.1.2",
+    "version": "1.1.3",
 
     "description": "Tag regions easily (hopefully).",
 
@@ -34,7 +34,7 @@
     {
         "default_icon": "icon.svg",
         "default_title": "PATATA",
-        "default_panel": "tagging.html",
+        "default_panel": "sidebar.html",
         "open_at_install": false
     },
 

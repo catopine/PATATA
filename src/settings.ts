@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import * as html from './html.js'
+import * as html from './sidebar.js'
 import { sanitize, desanitize } from './ui.js'
 
 export interface Settings
@@ -64,7 +64,7 @@ export async function saveSettings (settings: Settings): Promise<void>
         useragent = html.useragentInput.value
         if (nationList === '' || useragent === '')
         {
-            throw new Error("Please don't leave either input blank")
+            throw new Error('Please don\'t leave either input blank')
         }
         nationList = nationList.trim()
         nations = nationList.split(/\n+/)

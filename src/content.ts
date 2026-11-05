@@ -30,7 +30,6 @@ export async function disableBtnsForSimul (): Promise<void>
             // No forms to submit, ergo, nothing that can send a request to disable
             return
         }
-        // Don't think this needs an await, but I really don't know
         for (const form of formList)
         {
             const btnList: NodeListOf<HTMLInputElement | HTMLButtonElement> = form.querySelectorAll('input[type="submit"], button')

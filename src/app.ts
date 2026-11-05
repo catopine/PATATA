@@ -15,15 +15,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import * as html from './html.js'
+import * as html from './sidebar.js'
 import { getStoredSettings, saveSettings, userSettings } from './settings.js'
 import { NsApi } from './api.js'
-import { NsHtml } from './tagging.js'
+import { NsHtml } from './html.js'
 import * as ui from './ui.js'
-import { tagSettings } from './checking.js'
+import { tagSettings, checkInputs } from './checking.js'
 import * as content from './content.js'
 
 // Idk if I can do this except by definining it here
+// Well no, I know I can, I just don't know how
 const nsApi: NsApi = new NsApi()
 const nsHtml: NsHtml = new NsHtml()
 const currentStuff: ui.CurrentStuff =
@@ -389,14 +390,14 @@ async function tag (nationsWithPerms: ui.NationRegionPair[]): Promise<void>
                     }
                     else
                     {
-                        if (await nsHtml.removeDispatch(currentRegion, currentStuff.Chk, currentStuff.Pin, currentStuff.dispatchesToRemove[currentStuff.index]!))
+                        const dispatch = currentStuff.dispatchesToRemove[currentStuff.index++]!
+                        if (await nsHtml.removeDispatch(currentRegion, currentStuff.Chk, currentStuff.Pin, dispatch))
                         {
-                            // I wonder why Nota didn't declare a dispatch variable like he did with the tags
-                            html.taggingText.textContent = `Removed dispatch ${currentStuff.dispatchesToRemove[currentStuff.index++]} in ${currentRegion}!`
+                            html.taggingText.textContent = `Removed dispatch ${dispatch} in ${currentRegion}!`
                         }
                         else
                         {
-                            html.taggingText.textContent = `Removing dispatch ${currentStuff.dispatchesToRemove[currentStuff.index++]} in ${currentRegion} failed.`
+                            html.taggingText.textContent = `Removing dispatch ${dispatch} in ${currentRegion} failed.`
                         }
                     }
                     break
@@ -462,44 +463,6 @@ async function main (): Promise<ui.NationRegionPair[]>
     return nationsWithPerms
 }
 
-/**
- * This checks if the active tab is an NS tab, and opens one if it is not
- * @returns A boolean saying if the NS tab was opened
- */
-async function checkActiveTab (): Promise<boolean | null>
-{
-    const activeTab = await browser.tabs.query(
-        {
-            currentWindow: true,
-            active: true,
-            url: '*://*.nationstates.net/*'
-        }
-    )
-    if (activeTab.length === 0)
-    {
-        try
-        {
-            await browser.tabs.create(
-                {
-                    active: true,
-                    url: `https://www.nationstates.net?generated_by=PATATA_v${ui.PATATA_VERSION.replace(/./g, '_')}__by_tyrannical_porcupines_united__usedBy_${ui.sanitize(userSettings.ua)}`
-                }
-            )
-            // Do I need to wait for it to finish loading? Hopefully not
-            return true
-        }
-        catch (error)
-        {
-            console.error(error)
-            return null
-        }
-    }
-    else
-    {
-        return false
-    }
-}
-
 // Run on opening
 function setup (): void 
 {
@@ -516,30 +479,35 @@ function setup (): void
     })
 
     // Start the API stuff if active tab is 
-    html.startBtn.addEventListener('click', (ev) =>
+    html.tagStartBtn.addEventListener('click', (ev) =>
     {
-        checkActiveTab().then((value) =>
+        ui.checkActiveTab(userSettings.ua).then((value) =>
         {
-            if (!value)
+            outerIf:
             {
-                main().then((value) =>
-                {
-                    // Legitimately no idea if this will work
-                    nationsWithPerms.push(...value)
-                    if (nationsWithPerms.length === 0)
+                if (!value)
+	            {
+                    if (!checkInputs())
                     {
-                        html.taggingLabel.textContent = `No nations with permissions to tag!`
+                        break outerIf
                     }
-                    else
-                    {
-                        html.tagBtn.hidden = false
-                        html.tagBtn.textContent = 'Login'
-                    }
-                })
+	                main().then((value) =>
+	                {
+	                    // Legitimately no idea if this will work
+	                    nationsWithPerms.push(...value)
+	                    if (nationsWithPerms.length === 0)
+	                    {
+	                        html.taggingLabel.textContent = `No nations with permissions to tag!`
+	                    }
+	                    else
+	                    {
+	                        html.tagBtn.hidden = false
+	                        html.tagBtn.textContent = 'Login'
+	                    }
+	                })
+	            }
             }
         })
-
-        
     })
 
     // Tag button watching

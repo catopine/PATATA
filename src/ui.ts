@@ -19,11 +19,9 @@
 // Was getting too complicated trying to figure out where each function had to be imported from
 // Probably shouldn't have named it ui. Very little of this is actually ui stuff
 
-// Only reason PATATA_VERSION has a JSDoc Comment is to keep it from having the copyright one above
-/**
- * Version number of PATATA
- */
-export const PATATA_VERSION: string = `1.1.2`
+import { tagWhat } from './checking.js'
+
+export const PATATA_VERSION: string = `1.1.3`
 
 /**
  * The stuff that is needed to verify that the user is who they say they are.
@@ -100,6 +98,16 @@ export interface Auth
     polls: boolean
 }
 
+export interface TagWhat
+{
+    wfe: boolean,
+    flagAndBanner: boolean,
+    embs: boolean,
+    tags: boolean,
+    dispatches: boolean,
+    poll: boolean
+}
+
 // Literally the only point of this one is to clean up the global declaration space of app.ts
 // Why are some of these PascalCase and some camelCase?
 // Goddamn it Porc you fucking idiot you already spent so much time moving all this shit to an interface,
@@ -121,6 +129,44 @@ export interface CurrentStuff
 }
 
 /**
+ * This checks if the active tab is an NS tab, and opens one if it is not
+ * @returns A boolean saying if the NS tab was opened
+ */
+export async function checkActiveTab (ua: string): Promise<boolean | null>
+{
+    const activeTab = await browser.tabs.query(
+        {
+            currentWindow: true,
+            active: true,
+            url: '*://*.nationstates.net/*'
+        }
+    )
+    if (activeTab.length === 0)
+    {
+        try
+        {
+            await browser.tabs.create(
+                {
+                    active: true,
+                    url: `https://www.nationstates.net?generated_by=PATATA_v${PATATA_VERSION.replace(/./g, '_')}__by_tyrannical_porcupines_united__usedBy_${sanitize(ua)}`
+                }
+            )
+            // Do I need to wait for it to finish loading? Hopefully not
+            return true
+        }
+        catch (error)
+        {
+            console.error(error)
+            return null
+        }
+    }
+    else
+    {
+        return false
+    }
+}
+
+/**
  * This changes the text on the tag button depending on what is being tagged and what was just tagged
  * @param tagBtn The button that is used for tagging
  */
@@ -128,7 +174,6 @@ export async function getNextBtnText(tagBtn: HTMLButtonElement): Promise<void>
 {
     try
     {
-        const tagWhat = await browser.storage.session.get(null)
         switch (tagBtn.textContent)
         {
             case 'Get Region Info':
@@ -236,7 +281,7 @@ export function sanitize (text: string): string
  */
 export function desanitize (text: string): string
 {
-    return text.replace(/[a-z0-9]*/g, (txt: string) => 
+    return text.replace(/[a-z0-9]+/g, (txt: string) => 
     {
         return txt.charAt(0).toUpperCase() + txt.substring(1)
     }).replace(/_/g, ' ')

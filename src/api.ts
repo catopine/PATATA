@@ -209,16 +209,17 @@ export class NsApi
             const apiResponse: Response = await fetch(apiRequest)
             return await apiResponse.text()
         }
-        catch(error)
+        catch (error)
         {
-            console.error(error)
+            console.error (error)
             // Ensure the error is an Error and compare to message, otherwise always false
             if (error instanceof Error && error.message === 'Set a main nation before using the API')
             {
                 console.error(`Frankly I'm impressed you managed to get an error here.`)
                 console.error(`This is like me third check to make sure you've set a user agent.`)
             }
-            throw new Error()
+            // I think throwing this error causes it to crash. Or do smth weird at least. Actually that's probably fine
+            throw new Error ()
         }
     }
 
